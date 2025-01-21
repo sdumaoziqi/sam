@@ -11,6 +11,9 @@ class SAM(torch.optim.Optimizer):
         self.base_optimizer = base_optimizer(self.param_groups, **kwargs)
         self.param_groups = self.base_optimizer.param_groups
         self.defaults.update(self.base_optimizer.defaults)
+        for group in self.param_groups:
+            for p in group["params"]:
+                self.state[p]["old_p"] = p.data.clone()
 
     @torch.no_grad()
     def first_step(self, zero_grad=False):
@@ -20,7 +23,7 @@ class SAM(torch.optim.Optimizer):
 
             for p in group["params"]:
                 if p.grad is None: continue
-                self.state[p]["old_p"] = p.data.clone()
+                self.state[p]["old_p"].copy_(p.data)
                 e_w = (torch.pow(p, 2) if group["adaptive"] else 1.0) * p.grad * scale.to(p)
                 p.add_(e_w)  # climb to the local maximum "w + e(w)"
 
